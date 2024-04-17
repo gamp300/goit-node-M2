@@ -24,12 +24,22 @@ const getContactById = async (contactId) => {
 
 const addContact = async (newContact) => {
   try {
+    if (!newContact.name) {
+      return { message: "missing required name field" };
+    }
+    if (!newContact.email) {
+      return { message: "missing required email field" };
+    }
+    if (!newContact.phone) {
+      return { message: "missing required phone field" };
+    }
+
     const contacts = await listContacts();
     const id = generateUniqueId(contacts);
     const contactWithId = { id, ...newContact };
     contacts.push(contactWithId);
     await fs.writeFile(contactsFilePath, JSON.stringify(contacts, null, 2));
-    return contactWithId;
+    return { ...contactWithId, status: 201 };
   } catch (error) {
     throw new Error("Error al añadir un nuevo contacto");
   }
