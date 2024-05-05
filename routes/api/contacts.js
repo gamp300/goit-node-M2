@@ -1,36 +1,42 @@
-const express = require("express");
-const router = express.Router();
+const express = require('express');
 const {
   listContacts,
   getContactById,
-  addContact,
   removeContact,
+  addContact,
   updateContact,
-} = require("../../models/contacts");
+  updateStatusContact,
+} = require('../../models/controller.js');
+const { postSchema, putSchema, favoriteShema } = require('./validation.js');
 
-router.get("/", async (req, res, next) => {
+const router = express.Router();
+
+router.get('/', async (req, res, next) => {
   try {
     const contacts = await listContacts();
-    res.json(contacts);
+    res.json({ contacts });
   } catch (err) {
-    next(err);
+    res.status(404).json({ message: 'Not found' });
   }
 });
 
-router.get("/:contactId", async (req, res, next) => {
+router.get('/:contactId', async (req, res, next) => {
   try {
-    const contact = await getContactById(req.params.contactId);
-    if (!contact) {
-      return res.status(404).json({ message: "Not found" });
+    const contactById = await getContactById(req.params.contactId);
+    res.json(contactById);
+  } catch (err) {
+    res.status(404).json({ message: 'Not found' });
+  }
+});
+
+router.post('/', async (req, res, next) => {
+  try {
+    const { error } = postSchema.validate(req.body);
+    if (error) {
+      res.status(400).json({ message: 'missing required name field' });
+      return;
     }
-    res.json(contact);
-  } catch (err) {
-    next(err);
-  }
-});
 
-router.post("/", async (req, res, next) => {
-  try {
     const newContact = await addContact(req.body);
     res.status(201).json(newContact);
   } catch (err) {
@@ -38,27 +44,47 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-router.delete("/:contactId", async (req, res, next) => {
+router.delete('/:contactId', async (req, res, next) => {
   try {
     const result = await removeContact(req.params.contactId);
-    if (!result) {
-      return res.status(404).json({ message: "Not found" });
-    }
-    res.json({ message: "Contact deleted" });
+    res.json({ message: 'contact deleted' });
   } catch (err) {
-    next(err);
+    res.status(404).json({ message: 'Not found' });
   }
 });
 
-router.put("/:contactId", async (req, res, next) => {
+router.put('/:contactId', async (req, res, next) => {
   try {
-    const updatedContact = await updateContact(req.params.contactId, req.body);
-    if (!updatedContact) {
-      return res.status(404).json({ message: "Not found" });
+    const { error } = putSchema.validate(req.body);
+
+    if (error) {
+      res.status(400).json({ message: 'missing fields' });
+      return;
     }
-    res.json(updatedContact);
+
+    const result = await updateContact(req.params.contactId, req.body);
+    res.json(result);
   } catch (err) {
-    next(err);
+    res.status(404).json({ message: 'Not found' });
+  }
+});
+
+router.patch('/:contactId/favorite', async (req, res, next) => {
+  try {
+    const { error } = favoriteShema.validate(req.body);
+
+    if (error) {
+      res.status(400).json({ message: 'missing field favorite' });
+      return;
+    }
+
+    const { contactId } = req.params;
+    const { favorite = false } = req.body;
+
+    const result = await updateStatusContact(contactId, { favorite });
+    res.json(result);
+  } catch (error) {
+    res.status(404).json({ message: 'Not found' });
   }
 });
 
